@@ -21,3 +21,4 @@ COPY . .
 
 # Set the default command to activate the conda environment and run the script
 CMD ["/bin/bash", "-c", "source activate housing && python create_model.py"]
+#CMD ["python", "create_model.py"]
