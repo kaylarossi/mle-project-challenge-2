@@ -1,17 +1,29 @@
 import json
+import os
 import pathlib
 import pickle
 from typing import List
 from typing import Tuple
-
+import comet_ml
 import pandas
+from datetime import datetime
+timestamp = datetime.now().strftime("%m-%d_%H-%M")
+
+from dotenv import load_dotenv
 from sklearn import model_selection
 from sklearn import neighbors
 from sklearn import pipeline
 from sklearn import preprocessing
 
+
+from MetricsClass import Metrics_Summary
+from ModelClass import models
+
+load_dotenv()
+api_key = os.getenv("API_KEY")
+
 SALES_PATH = "data/kc_house_data.csv"  # path to CSV with home sale data
-DEMOGRAPHICS_PATH = "data/kc_house_data.csv"  # path to CSV with demographics
+DEMOGRAPHICS_PATH = "data/zipcode_demographics.csv"  # path to CSV with demographics
 # List of columns (subset) that will be taken from home sale data
 SALES_COLUMN_SELECTION = [
     'price', 'bedrooms', 'bathrooms', 'sqft_living', 'sqft_lot', 'floors',
@@ -58,17 +70,61 @@ def main():
     x_train, _x_test, y_train, _y_test = model_selection.train_test_split(
         x, y, random_state=42)
 
-    model = pipeline.make_pipeline(preprocessing.RobustScaler(),
-                                   neighbors.KNeighborsRegressor()).fit(
-                                       x_train, y_train)
+    # model = pipeline.make_pipeline(preprocessing.RobustScaler(),
+    #                                neighbors.KNeighborsRegressor()).fit(
+    #                                    x_train, y_train)
 
     output_dir = pathlib.Path(OUTPUT_DIR)
     output_dir.mkdir(exist_ok=True)
+    
+    for config in models:
+        experiment = comet_ml.start(
+            project_name="housing-model",
+            workspace="kayla-rossi",
+            api_key=api_key,
+        )
+        experiment.set_name(f"{config.name}_{timestamp}")
 
-    # Output model artifacts: pickled model and JSON list of features
-    pickle.dump(model, open(output_dir / "model.pkl", 'wb'))
-    json.dump(list(x_train.columns),
-              open(output_dir / "model_features.json", 'w'))
+
+        if config.needs_scaling:
+            model = pipeline.make_pipeline(
+                preprocessing.RobustScaler(), 
+                config.model.set_params(**config.params))
+        else:
+            model = config.model.set_params(**config.params)
+
+        model.fit(x_train, y_train)
+
+        y_train_preds = model.predict(x_train)
+        y_test_preds = model.predict(_x_test)
+
+        #metrics for training data
+        train_metrics = Metrics_Summary(y_train, y_train_preds, config.name)
+        train_metrics_dict = train_metrics.as_dict()
+        for name, value in train_metrics_dict.items():
+            experiment.log_metric(f"train_{name}", value)
+        print("Training Metrics:")
+        train_metrics.print_summary()
+
+        # metrics for test data
+        test_metrics = Metrics_Summary(_y_test, y_test_preds, config.name)
+        test_metrics_dict = test_metrics.as_dict()
+        for name, value in test_metrics_dict.items():
+            experiment.log_metric(f"test_{name}", value)
+        print("Test Metrics:")
+        test_metrics.print_summary()
+
+        # Output model artifacts: pickled model and JSON list of features
+        pickle.dump(model, open(output_dir / f"{config.name}.pkl", 'wb'))
+        json.dump(list(x_train.columns),
+                open(output_dir / f"{config.name}_features.json", 'w'))
+
+        experiment.log_parameters(config.params)
+        experiment.log_model(name=config.name, 
+                            file_or_folder=str(output_dir / f"{config.name}.pkl"), 
+                            metadata={"features": list(x_train.columns)})
+        
+        experiment.end()
 
 
 if __name__ == "__main__":
