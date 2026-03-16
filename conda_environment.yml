@@ -9,3 +9,4 @@ dependencies:
 - pip:
   - comet-ml
   - python-dotenv
+  - "fastapi[standard]"

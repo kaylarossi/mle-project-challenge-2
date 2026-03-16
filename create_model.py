@@ -23,7 +23,7 @@ load_dotenv()
 api_key = os.getenv("API_KEY")
 
 SALES_PATH = "data/kc_house_data.csv"  # path to CSV with home sale data
-DEMOGRAPHICS_PATH = "data/kc_house_data.csv"  # path to CSV with demographics
+DEMOGRAPHICS_PATH = "data/zipcode_demographics.csv"  # path to CSV with demographics
 # List of columns (subset) that will be taken from home sale data
 SALES_COLUMN_SELECTION = [
     'price', 'bedrooms', 'bathrooms', 'sqft_living', 'sqft_lot', 'floors',
@@ -95,14 +95,24 @@ def main():
 
         model.fit(x_train, y_train)
 
-        y_preds = model.predict(_x_test)
+        y_train_preds = model.predict(x_train)
+        y_test_preds = model.predict(_x_test)
 
-        # gather, log, and print metrics
-        metrics = Metrics_Summary(_y_test, y_preds, config.name)
-        metrics_dict = metrics.as_dict()
-        for name, value in metrics_dict.items():
-            experiment.log_metric(name, value)
-        metrics.print_summary()
+        #metrics for training data
+        train_metrics = Metrics_Summary(y_train, y_train_preds, config.name)
+        train_metrics_dict = train_metrics.as_dict()
+        for name, value in train_metrics_dict.items():
+            experiment.log_metric(f"train_{name}", value)
+        print("Training Metrics:")
+        train_metrics.print_summary()
+
+        # metrics for test data
+        test_metrics = Metrics_Summary(_y_test, y_test_preds, config.name)
+        test_metrics_dict = test_metrics.as_dict()
+        for name, value in test_metrics_dict.items():
+            experiment.log_metric(f"test_{name}", value)
+        print("Test Metrics:")
+        test_metrics.print_summary()
 
         # Output model artifacts: pickled model and JSON list of features
         pickle.dump(model, open(output_dir / f"{config.name}.pkl", 'wb'))
