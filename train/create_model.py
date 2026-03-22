@@ -35,7 +35,23 @@ OUTPUT_DIR = "model"  # Directory where output artifacts will be saved
 
 def add_features(df: pandas.DataFrame) -> pandas.DataFrame:
 
-    # # home renovation features
+    """
+    Add engineered features to the input DataFrame for improved model performance.
+
+    Features added:
+        - lot_to_living_ratio: Ratio of lot size to living area
+        - above_to_living_ratio: Ratio of above-ground sqft to living area
+        - basement_present: Binary indicator if basement exists
+        - sqft_per_bedroom: Living area per bedroom
+        - bed_bath_ratio: Ratio of bedrooms to bathrooms
+
+    Args:
+        df: Input DataFrame containing at least the columns used in feature engineering
+
+    Returns:
+        DataFrame with new features added as columns
+    """
+    # # home renovation features (commented out)
     # current_year = 2015
     # df['house_age'] = current_year - df['yr_built']
     # df['was_renovated'] = (df['yr_renovated']>0).astype(int)
@@ -49,10 +65,8 @@ def add_features(df: pandas.DataFrame) -> pandas.DataFrame:
     df['lot_to_living_ratio'] = df['sqft_lot'] / df['sqft_living'].replace(0, 1)  # avoid division by zero
     df['above_to_living_ratio'] = df['sqft_above'] / df['sqft_living'].replace(0, 1)  # avoid division by zero
     df['basement_present'] = (df['sqft_basement'] > 0).astype(int)
-    
     df['sqft_per_bedroom'] = df['sqft_living'] / (df['bedrooms'].replace(0, 1))  # avoid division by zero
     df['bed_bath_ratio'] = df['bedrooms'] / (df['bathrooms'].replace(0, 1))  # avoid division by zero
-
     return df
 
 def load_data(
@@ -92,7 +106,20 @@ def load_data(
 
 
 def main():
-    """Load data, train model, and export artifacts."""
+    """
+    Main function to load data, train models with various configurations, log metrics, and export model artifacts.
+
+    Steps:
+        1. Load and preprocess data.
+        2. Split data into training and test sets.
+        3. For each model configuration:
+            - Start a Comet experiment.
+            - Train the model (with or without scaling).
+            - Evaluate and log metrics for train and test sets.
+            - Save model and feature list artifacts.
+            - Log parameters and model to Comet.
+            - End the experiment.
+    """
     x, y = load_data(SALES_PATH, DEMOGRAPHICS_PATH, SALES_COLUMN_SELECTION)
     x_train, _x_test, y_train, _y_test = model_selection.train_test_split(x, y,
                                                                           train_size=0.8,
