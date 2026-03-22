@@ -14,7 +14,17 @@ MODEL_PATH = "model_features/gradient_boosting_n_estimators_100_learning_rate_0.
 ## need to receive JSON POST data
 
 def load_model():
-    """Load a trained model from a pickle file."""
+    """
+    Load a trained machine learning model and its feature list from disk.
+
+    Returns:
+        tuple: (loaded_model, features)
+            loaded_model: The trained model loaded from a pickle file.
+            features: List of feature names used during model training.
+
+    Raises:
+        ValueError: If loading the model or features fails.
+    """
     try:
         loaded_model = pickle.load(open(MODEL_PATH, 'rb'))
         features = json.load(open(FEATURES_PATH, 'r'))
@@ -25,19 +35,37 @@ def load_model():
     return loaded_model, features
     
 def add_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add engineered features to the input DataFrame for model inference.
 
+    Args:
+        df (pd.DataFrame): Input DataFrame with raw features.
+
+    Returns:
+        pd.DataFrame: DataFrame with additional engineered features.
+    """
     # space ratio
     df['lot_to_living_ratio'] = df['sqft_lot'] / df['sqft_living'].replace(0, 1)  # avoid division by zero
     df['above_to_living_ratio'] = df['sqft_above'] / df['sqft_living'].replace(0, 1)  # avoid division by zero
     df['basement_present'] = (df['sqft_basement'] > 0).astype(int)
-    
     df['sqft_per_bedroom'] = df['sqft_living'] / (df['bedrooms'].replace(0, 1))  # avoid division by zero
     df['bed_bath_ratio'] = df['bedrooms'] / (df['bathrooms'].replace(0, 1))  # avoid division by zero
-
     return df
 
 def preprocess_input(input_data, features) -> pd.DataFrame:
-    """Merge demographics with input JSON data and down select features to match those used in training the model."""
+    """
+    Merge demographics with input JSON data, engineer features, and select columns to match model training.
+
+    Args:
+        input_data (dict or list): Input data as a dictionary or list of dictionaries.
+        features (list): List of feature names expected by the model.
+
+    Returns:
+        pd.DataFrame: Preprocessed DataFrame ready for model inference.
+
+    Raises:
+        ValueError: If input data is missing required features or cannot be processed.
+    """
     # with open(input_data, 'r') as f:
     #     input_data = json.load(f)
     try:
@@ -68,13 +96,18 @@ def preprocess_input(input_data, features) -> pd.DataFrame:
     return merged_input
 
 def run_inference(input_data) -> float:
-    '''
-    Run inference on JSON input data
+    """
+    Run inference on input data and return formatted price predictions.
+
     Args:
-        input_data: list of dicts
+        input_data (dict or list): Input data as a dictionary or list of dictionaries.
+
     Returns:
-        predicted prices as a floats formatted as prices
-    '''
+        list: List of formatted price prediction strings for each input record.
+
+    Raises:
+        ValueError: If inference fails or input data is invalid.
+    """
     loaded_model, features = load_model()
     # Run inference on future data and save predictions
     input_df = preprocess_input(input_data, features)
