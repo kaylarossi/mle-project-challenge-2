@@ -8,8 +8,8 @@ logger = logging.getLogger('gunicorn.error')
 
 # SAMPLE_INPUT = 'test/single_test_data.json'  # path to JSON file with input data for prediction
 DEMOGRAPHICS_PATH = "data/zipcode_demographics.csv"  # path to CSV with demographics
-FEATURES_PATH = "model/random_forest_regressor_features.json"  # path to JSON file with list of features used in model
-MODEL_PATH = "model/random_forest_regressor.pkl"  # path to pickle file with trained model
+FEATURES_PATH = "model_features/gradient_boosting_n_estimators_100_learning_rate_0.1_max_depth_3_loss_huber_features.json"  # path to JSON file with list of features used in model
+MODEL_PATH = "model_features/gradient_boosting_n_estimators_100_learning_rate_0.1_max_depth_3_loss_huber.pkl"  # path to pickle file with trained model
 
 ## need to receive JSON POST data
 
@@ -24,6 +24,17 @@ def load_model():
         raise ValueError(f"Error loading model or features: {str(e)}")
     return loaded_model, features
     
+def add_features(df: pd.DataFrame) -> pd.DataFrame:
+
+    # space ratio
+    df['lot_to_living_ratio'] = df['sqft_lot'] / df['sqft_living'].replace(0, 1)  # avoid division by zero
+    df['above_to_living_ratio'] = df['sqft_above'] / df['sqft_living'].replace(0, 1)  # avoid division by zero
+    df['basement_present'] = (df['sqft_basement'] > 0).astype(int)
+    
+    df['sqft_per_bedroom'] = df['sqft_living'] / (df['bedrooms'].replace(0, 1))  # avoid division by zero
+    df['bed_bath_ratio'] = df['bedrooms'] / (df['bathrooms'].replace(0, 1))  # avoid division by zero
+
+    return df
 
 def preprocess_input(input_data, features) -> pd.DataFrame:
     """Merge demographics with input JSON data and down select features to match those used in training the model."""
@@ -42,6 +53,9 @@ def preprocess_input(input_data, features) -> pd.DataFrame:
     demographics = pd.read_csv(DEMOGRAPHICS_PATH, dtype={'zipcode': str})
 
     merged_input = input_data_df.merge(demographics, how="left", on="zipcode").drop(columns="zipcode")
+
+    # add in additional features
+    merged_input = add_features(merged_input)
 
     #verify input data has the same features as the model was trained on 
     missing_features = set(features) - set(merged_input.columns)

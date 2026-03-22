@@ -46,8 +46,8 @@ def add_features(df: pandas.DataFrame) -> pandas.DataFrame:
     # )
 
     # space ratio
-    df['lot_to_living_ratio'] = df['sqft_lot'] / df['sqft_living']
-    df['above_to_living_ratio'] = df['sqft_above'] / df['sqft_living']
+    df['lot_to_living_ratio'] = df['sqft_lot'] / df['sqft_living'].replace(0, 1)  # avoid division by zero
+    df['above_to_living_ratio'] = df['sqft_above'] / df['sqft_living'].replace(0, 1)  # avoid division by zero
     df['basement_present'] = (df['sqft_basement'] > 0).astype(int)
     
     df['sqft_per_bedroom'] = df['sqft_living'] / (df['bedrooms'].replace(0, 1))  # avoid division by zero

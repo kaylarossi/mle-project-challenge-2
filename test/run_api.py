@@ -2,9 +2,9 @@ import json
 import requests
 
 
-BASE_URL = "http://54.227.34.176:5000"  #update based on EC2 public url
+BASE_URL = "http://100.25.218.223:5000"  #update based on EC2 public url
 DATA_PATH = "test/simple_post_data_subset.json"
-END_POINT = "/predict/simple"
+END_POINT = "/predict"
 
 
 with open (DATA_PATH, 'r') as f:
