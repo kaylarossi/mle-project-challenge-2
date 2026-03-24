@@ -9,5 +9,6 @@ dependencies:
 - pip:
   - comet-ml
   - python-dotenv
+  - flask
   - flask-restful
   - gunicorn
